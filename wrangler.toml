@@ -1,0 +1,32 @@
+# YachtingSignals — Cloudflare Worker config (rebuilt from the live deployment, 23 Nov 2026)
+name = "ai-tracker"
+main = "src/worker.js"
+compatibility_date = "2026-11-01"
+
+routes = [
+  { pattern = "yachtingsignals.com", custom_domain = true },
+  { pattern = "www.yachtingsignals.com", custom_domain = true },
+]
+
+[triggers]
+# every minute: process queued AI jobs; 03:00 UTC on the 1st: monthly runs for all active categories
+crons = ["* * * * *", "0 3 1 * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "ai-tracker"
+database_id = "7fa3e2b8-3917-44c6-8c1f-905d23d94908"
+
+[vars]
+CLAUDE_MODEL = "claude-sonnet-5-5"
+EXTRACT_MODEL = "claude-haiku-5-5"
+GEMINI_MODEL = "gemini-3.5-flash-lite"
+OPENAI_MODEL = "gpt-5.6-luna"
+PERPLEXITY_EFFORT = "low"
+
+# Secrets are NOT stored here. Set them with:
+#   wrangler secret put ADMIN_KEY
+#   wrangler secret put ANTHROPIC_API_KEY
+#   wrangler secret put OPENAI_API_KEY
+#   wrangler secret put GEMINI_API_KEY
+#   wrangler secret put PERPLEXITY_API_KEY
