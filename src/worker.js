@@ -684,12 +684,30 @@ async function homePage(env, url) {
   return sitePage('YachtingSignals: which superyacht suppliers the AI assistants recommend', h, { desc: 'Every month YachtingSignals asks ChatGPT, Gemini, Claude and Perplexity the same buyer questions and publishes which superyacht suppliers they recommend. Free check: does ChatGPT recommend your company?' });
 }
 
+// Sitemap: the public pages, plus one league page per active category that has published results.
+// lastmod for a league is the date of its latest public run; static pages carry none (no honest date to give).
+async function sitemapXml(env) {
+  const base = 'https://yachtingsignals.com';
+  const urls = [{ loc: base + '/' }, { loc: base + '/league' }, { loc: base + '/check' }, { loc: base + '/privacy' }];
+  const cats = (await env.DB.prepare('SELECT id FROM categories WHERE active = 1 ORDER BY name').all()).results;
+  for (const c of cats) {
+    const run = await publicRun(env, c.id);
+    if (!run) continue;
+    const r = await env.DB.prepare('SELECT substr(created_at, 1, 10) AS d FROM runs WHERE id = ?').bind(run.id).first();
+    urls.push({ loc: base + '/league/' + encodeURIComponent(c.id), lastmod: r && r.d });
+  }
+  const xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
+    urls.map(function (u) { return '<url><loc>' + esc(u.loc) + '</loc>' + (u.lastmod ? '<lastmod>' + u.lastmod + '</lastmod>' : '') + '</url>'; }).join('\n') + '\n</urlset>\n';
+  return new Response(xml, { headers: { 'content-type': 'application/xml; charset=utf-8' } });
+}
+
 export default {
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
     const path = url.pathname;
     try {
-      if (path === '/robots.txt') return new Response('User-agent: *\nAllow: /\nDisallow: /admin\n', { headers: { 'content-type': 'text/plain; charset=utf-8' } });
+      if (path === '/robots.txt') return new Response('User-agent: *\nAllow: /\nDisallow: /admin\n\nSitemap: https://yachtingsignals.com/sitemap.xml\n', { headers: { 'content-type': 'text/plain; charset=utf-8' } });
+      if (path === '/sitemap.xml') return await sitemapXml(env);
       if (path === '/') return await homePage(env, url);
       if (path === '/vote' && req.method === 'POST') return await votePost(req, env);
       if (path === '/start') return req.method === 'POST' ? await planPost(req, env) : planPage(url.searchParams.get('plan'), '');
