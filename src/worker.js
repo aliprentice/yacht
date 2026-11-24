@@ -502,7 +502,7 @@ async function ckShow(req, env, url) {
 }
 
 // ---- Public site: shared look (19 Nov 2026) ----
-const SITE_CSS = ':root{--ink:#1F3240;--body:#3A4A56;--muted:#4A5A66;--sea:#1F7A99;--sea2:#1F6E8A;--mist:#E6F1F4;--bg:#FBF8F3;--line:#ECE4D8;--coral:#A8462C}' +
+const SITE_CSS = '.sect{display:flex;flex-wrap:wrap;gap:10px}.sect a{display:inline-flex;align-items:center;gap:8px;background:#fff;color:var(--sea2);border:2px solid var(--sea);border-radius:999px;padding:10px 18px;font-weight:800;text-decoration:none;min-height:46px}.sect a:hover{background:var(--sea);color:#fff}.bub{border-radius:16px;padding:12px 14px;margin:0 0 10px;font-size:15px;line-height:1.4}.bub.q{background:var(--sea);color:#fff;margin-left:28px;border-bottom-right-radius:4px}.bub.a{background:#F3F6F8;color:var(--ink);margin-right:28px;border-bottom-left-radius:4px}.bub .who{font-weight:800;font-size:13px;color:var(--muted);margin-bottom:4px}.bub ol{margin:0;padding-left:22px;font-weight:700}.flow{display:grid;gap:10px}.flow div{display:flex;gap:12px;align-items:baseline}.flow b{flex:0 0 66px;color:var(--sea2)}.flow span{color:var(--body);font-size:15px}:root{--ink:#1F3240;--body:#3A4A56;--muted:#4A5A66;--sea:#1F7A99;--sea2:#1F6E8A;--mist:#E6F1F4;--bg:#FBF8F3;--line:#ECE4D8;--coral:#A8462C}' +
   '*{box-sizing:border-box}body{margin:0;font-family:"Nunito Sans",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--ink);background:var(--bg);line-height:1.55;font-size:16px}' +
   'a{color:var(--sea)}a:hover{color:#165C74}h1,h2,.serif{font-family:Fraunces,Georgia,serif;font-weight:600;line-height:1.12;margin:0 0 12px}h1{font-size:clamp(32px,5vw,52px)}h2{font-size:clamp(26px,3.4vw,32px)}h3{font-size:19px;font-weight:700;margin:0 0 8px}p{margin:0 0 12px}' +
   '.hd{background:#fff;border-bottom:1px solid var(--line);padding:12px 20px}.hd nav{max-width:1120px;margin:0 auto;display:flex;flex-wrap:wrap;gap:8px 24px;justify-content:space-between;align-items:center}' +
@@ -587,7 +587,6 @@ async function leaguePage(env, cat) {
   return sitePage('Who the AI assistants recommend: superyacht ' + c.name.toLowerCase() + ' | YachtingSignals', h, { desc: 'Which superyacht ' + c.name.toLowerCase() + ' brands ChatGPT, Gemini, Claude and Perplexity recommend to buyers, measured monthly by YachtingSignals.', ld: JSON.stringify(ld).replace(/</g, '\\u003c') });
 }
 function notFoundPage() { return sitePage('Page not found | YachtingSignals', '<main class="narrow"><h1>Page not found</h1><p><a href="/">Go to the homepage</a></p></main>', { status: 404, noindex: true }); }
-const CAT_OPTS = { decking: 'Teak and decking', connectivity: 'Connectivity', propulsion: 'Hybrid and propulsion', refit: 'Refit yards', tenders: 'Tenders and toys' };
 const PLANS = {
   report: { name: 'Monthly report', price: '&pound;20 a month', head: 'Get the monthly report', line: 'Every month: your rank and AI visibility score, every buyer question with your result on each assistant, the websites each one trusts, and how it describes you. Founding price &pound;20 a month, fixed for 12 months, or &pound;200 a year.', cta: 'Request the monthly report' },
   pro: { name: 'Pro', price: '&pound;59 a month', head: 'Get Pro', line: 'Everything in the monthly report, plus 50 search terms of your own, paid ChatGPT shown next to free, and testing from up to 5 markets in the local language.', cta: 'Request Pro' },
@@ -613,21 +612,11 @@ async function planPost(req, env) {
   if (n < 10) await env.DB.prepare('INSERT INTO leads (kind, value, email, company, website, note, ip) VALUES (?,?,?,?,?,?,?)').bind('plan', k, email, company, website, note, ip).run();
   return sitePage('Thank you | YachtingSignals', '<main class="narrow"><p class="eyebrow">' + PLANS[k].name + '</p><h1>Thank you, ' + esc(company) + '</h1><p class="lead">We have your request. We will email ' + esc(email) + ' with a secure payment link and confirm the details before anything starts.</p><p><a class="btn" href="/check">Run a free check while you wait</a></p></main>', { noindex: true });
 }
-async function votePost(req, env) {
-  const f = await req.formData(), back = new URL(req.url).origin + '/';
-  if (String(f.get('hp') || '')) return Response.redirect(back + '?vote=ok#vote', 303);
-  const cat = String(f.get('cat') || ''), email = String(f.get('email') || '').trim().slice(0, 120);
-  if (!CAT_OPTS[cat] || !CK_EMAIL.test(email)) return Response.redirect(back + '?vote=bad#vote', 303);
-  const ip = await ipHash(req);
-  const n = (await env.DB.prepare("SELECT COUNT(*) AS n FROM leads WHERE ip = ? AND created_at > datetime('now','-1 day')").bind(ip).first()).n;
-  if (n < 10) await env.DB.prepare('INSERT INTO leads (kind, value, email, ip) VALUES (?,?,?,?)').bind('vote', cat, email, ip).run();
-  return Response.redirect(back + '?vote=ok#vote', 303);
-}
 function privacyPage() {
   const h = '<h1>Privacy</h1><p class="muted">Last updated 23 November 2026</p>' +
     '<p>YachtingSignals is run by TENFEET LTD (company number 09894030, 128 City Road, London, EC1V 2NX). This page explains what we collect through this website and why.</p>' +
-    '<h3>What we collect</h3><p>When you run a free check, we keep the company name, what you sell, your website and email if you give them, and the answers ChatGPT gave. When you request a plan or vote for a category, we keep what you enter in the form. We also keep a one-way scrambled version of your IP address to stop the forms being overused; we cannot turn it back into your address.</p>' +
-    '<h3>Why</h3><p>To show you your result, to reply to your request, and to email you about the report or category you asked about. We do not sell your details or use them for anything else.</p>' +
+    '<h3>What we collect</h3><p>When you run a free check, we keep the company name, what you sell, your website and email if you give them, and the answers ChatGPT gave. When you request a plan, we keep what you enter in the form. We also keep a one-way scrambled version of your IP address to stop the forms being overused; we cannot turn it back into your address.</p>' +
+    '<h3>Why</h3><p>To show you your result, to reply to your request, and to email you about the report you asked about. We do not sell your details or use them for anything else.</p>' +
     '<h3>Who else handles it</h3><p>The site and its database run on Cloudflare. For the free check, the product you sell is sent to OpenAI as part of the questions, and the answers are read by Anthropic&rsquo;s Claude to pick out the brand names. Fonts are loaded from Google Fonts, which sees your IP address when the page loads. We use Google Analytics, loaded through Google Tag Manager, to count visits and see which pages are used; it sets cookies on your device. We do not use it for advertising or remarketing.</p>' +
     '<h3>Your choices</h3><p>You can ask to see, correct or delete what we hold about you at any time by emailing <a href="mailto:hello@yachtingsignals.com">hello@yachtingsignals.com</a>. You can also complain to the UK Information Commissioner&rsquo;s Office (ico.org.uk).</p>';
   return sitePage('Privacy | YachtingSignals', '<main class="narrow">' + h + '</main>');
@@ -638,14 +627,18 @@ async function homePage(env, url) {
   const last = await publicRun(env, cat);
   const d = last ? await leagueData(env, last.id) : null;
   const es = d ? engList(d) : [], nE = es.length, nQ = d ? await nQuestions(env, last.id) : 0;
-  let h = '<section class="hero"><div class="in"><div class="hero-l"><p class="eyebrow">For superyacht suppliers</p><h1>When a buyer asks ChatGPT for a shortlist, are you on it?</h1><p class="lead">Shipyard buyers, refit managers and naval architects now ask AI assistants which suppliers to call. Every month we ask ChatGPT, Gemini, Claude and Perplexity the same buyer questions and publish who they recommend.</p>' +
-    '<form id="check" class="card" method="post" action="/check" style="max-width:620px;margin-top:24px;padding:24px"><div class="serif" style="font-size:22px;margin:0 0 2px">Free check: does ChatGPT recommend you?</div><div class="row"><div><label for="hc-company">Company name</label><input id="hc-company" name="company" required maxlength="80" autocomplete="organization"></div><div><label for="hc-product">What you sell</label><input id="hc-product" name="product" required maxlength="80" placeholder="e.g. gyro stabilisers"></div></div>' +
-    '<div class="row"><div><label for="hc-website">Website (optional)</label><input id="hc-website" name="website" maxlength="120" placeholder="example.com"></div><div style="flex:0 0 auto;margin-top:12px"><button type="submit">Run my free check</button></div></div><p class="muted" style="margin:12px 0 0">3 buyer questions on free ChatGPT, web search on. About a minute. No sign-up, no card.</p></form></div><div class="hero-r">';
-  if (d) {
-    h += '<div class="card" style="margin:0;padding:24px"><div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><span class="eyebrow" style="margin:0;font-size:12px">This month&rsquo;s league</span><span class="muted">' + fmtDate(d.run.created_at, true) + '</span></div><div class="serif" style="font-size:22px;margin:6px 0 10px">Superyacht stabilisers</div>';
-    d.rows.slice(0, 5).forEach(function (r, i) { const s = Math.round(100 * (r.score || 0)); h += '<div class="bar" style="margin:9px 0;font-size:15px"><span class="muted" style="width:14px">' + (i + 1) + '</span><span style="width:110px;font-weight:700">' + esc(r.name) + '</span><div class="tr"><div class="fl" style="width:' + s + '%"></div></div><b>' + s + '</b></div>'; });
-    h += '<p class="muted" style="border-top:1px solid #EEF1F3;padding-top:10px;margin:12px 0 8px">AI visibility score out of 100, from ' + d.tot + ' answers on ' + engNames(d) + '.</p><a href="#league" style="font-weight:700">See the full top 10</a></div>';
-  }
+  const live = [];
+  for (const c of (await env.DB.prepare('SELECT id, name FROM categories WHERE active = 1 ORDER BY (id = \'stabilisers\') DESC, name').all()).results) { if (await publicRun(env, c.id)) live.push(c); }
+  let h = '<section class="hero"><div class="in"><div class="hero-l"><p class="eyebrow">AI visibility for superyacht suppliers</p><h1>When a buyer asks ChatGPT for a shortlist, are you on it?</h1>' +
+    '<p class="lead">Shipyard buyers, refit managers and brokers now ask AI assistants who to call. YachtingSignals asks ChatGPT, Gemini, Claude and Perplexity those same questions every month, records every supplier they name and every website they trust, and publishes the results as free league tables.</p>';
+  if (live.length) h += '<p class="eyebrow" style="margin:28px 0 10px;font-size:12px">This month&rsquo;s league tables</p><div class="sect">' + live.map(function (c) { return '<a href="/league/' + esc(c.id) + '">' + esc(c.name) + ' <span aria-hidden="true">&rarr;</span></a>'; }).join('') + '</div>';
+  h += '<p style="margin:22px 0 0"><a href="#check" style="font-weight:700">Is your company on the list? Run a free check &darr;</a></p></div><div class="hero-r">' +
+    '<div class="card demo" style="margin:0;padding:22px"><div class="eyebrow" style="margin:0 0 12px;font-size:12px">What your buyer sees</div>' +
+    '<div class="bub q">Which gyro stabiliser manufacturers can supply units large enough for a 60m superyacht?</div>' +
+    '<div class="bub a"><div class="who">ChatGPT</div><ol><li>VEEM</li><li>GyroMarine</li><li>Mitsubishi ARG</li><li>Seakeeper</li></ol><div class="muted" style="font-size:13px">+ 5 more named</div></div>' +
+    '<p class="muted" style="font-size:13px;margin:8px 0 16px">A real answer from our 18 November 2026 run, free ChatGPT, web search on.</p>' +
+    '<div class="eyebrow" style="margin:0 0 10px;font-size:12px;border-top:1px solid #EEF1F3;padding-top:14px">What we do with it</div>' +
+    '<div class="flow"><div><b>Ask</b><span>The same buyer questions to 4 assistants, on the 1st of every month</span></div><div><b>Record</b><span>Every brand named, in order, and every website cited</span></div><div><b>Publish</b><span>A free league per sector, and a private report on your gaps</span></div></div></div>';
   h += '</div></div></section><div class="wrap">';
   if (d && nE > 1) {
     const agree = (await env.DB.prepare("SELECT COUNT(*) AS n FROM (SELECT a.prompt_id FROM mentions m JOIN answers a ON a.id = m.answer_id WHERE m.run_id = ? AND m.position = 1 AND m.brand_id IS NOT NULL GROUP BY a.prompt_id HAVING COUNT(DISTINCT a.engine) = ? AND COUNT(DISTINCT m.brand_id) = 1)").bind(last.id, nE).first()).n;
@@ -661,6 +654,9 @@ async function homePage(env, url) {
     '<div class="card" style="margin:0"><h3>Each assistant tells a different story</h3><p style="color:var(--body);margin:0">Humphree is named in 16 of 20 Claude answers but 7 on ChatGPT, the assistant most buyers use. Checking one assistant gives you only part of the picture.</p></div>' +
     '<div class="card" style="margin:0"><h3>ChatGPT reads your own website</h3><p style="color:var(--body);margin:0">ChatGPT&rsquo;s most-cited sources are the makers&rsquo; own sites. Claude leans on trade press, Gemini on YouTube. What your pages say is what the biggest assistant repeats.</p></div>' +
     '<div class="card" style="margin:0"><h3>The AI decides what size of yacht you suit</h3><p style="color:var(--body);margin:0">One well-known gyro brand is repeatedly placed on smaller yachts, citing its own sizing page. That keeps it off larger-yacht shortlists.</p></div></div></section>';
+  h += '<section class="s card" id="check" style="padding:30px"><div style="display:flex;flex-wrap:wrap;gap:20px 40px"><div style="flex:1 1 280px"><h2 style="font-size:28px">Free check: does ChatGPT recommend you?</h2><p style="color:var(--body);margin:0">We ask free ChatGPT 3 buyer questions about what you sell, with web search on, and show you whether you are named. About a minute. No sign-up, no card.</p></div>' +
+    '<form method="post" action="/check" style="flex:2 1 420px"><div class="row"><div><label for="hc-company">Company name</label><input id="hc-company" name="company" required maxlength="80" autocomplete="organization"></div><div><label for="hc-product">What you sell</label><input id="hc-product" name="product" required maxlength="80" placeholder="e.g. gyro stabilisers"></div></div>' +
+    '<div class="row"><div><label for="hc-website">Website (optional)</label><input id="hc-website" name="website" maxlength="120" placeholder="example.com"></div><div style="flex:0 0 auto;margin-top:12px"><button type="submit">Run my free check</button></div></div></form></div></section>';
   h += '<section class="s" id="how"><h2>How it works</h2><div class="grid steps" style="margin-top:18px">' +
     '<div><div class="step">1 &middot; Ask</div><p style="color:var(--body)">On the 1st of each month, the same set of buyer questions in each category goes to the main AI assistants, with web search on and no chat history.</p></div>' +
     '<div><div class="step">2 &middot; Record</div><p style="color:var(--body)">Every brand named is recorded in order, with every website the assistant cited. Each assistant runs on the model its free app gives most people.</p></div>' +
@@ -671,11 +667,6 @@ async function homePage(env, url) {
     '<div class="card price pro"><span class="tag">Pro</span><div class="amt">&pound;59<span> / month</span></div><p class="muted" style="margin:0">For suppliers selling across several markets.</p><ul><li>Everything in the monthly report</li><li>50 search terms of your own: products, models, competitors</li><li>Paid ChatGPT shown next to free</li><li>Testing from up to 5 markets, in the local language</li><li>An alert when a competitor overtakes you</li></ul><a class="btn" href="/start?plan=pro">Get Pro</a></div>' +
     '<div class="card price fix"><span class="tag">Visibility fix</span><div class="amt">&pound;250<span> one-off</span></div><p class="muted" style="margin:0">For suppliers missing from answers that matter.</p><ul><li>Your 3 biggest gaps, weighted to ChatGPT</li><li>Ready-to-paste text for your own website</li><li>Edits written for up to 3 of your existing pages</li><li>The websites to get listed on, and how</li><li>Re-checks after 30 and 60 days to show what changed</li></ul><a class="btn" href="/start?plan=fix">Book the fix</a></div></div>' +
     '<p class="muted" style="margin-top:16px">The fix promises the work and an honest measurement, not a ranking: assistants change, and new text can take one or two monthly runs to be picked up.</p></section>';
-  const v = url.searchParams.get('vote');
-  h += '<section class="s card" id="vote" style="padding:30px;display:flex;flex-wrap:wrap;gap:24px 40px"><div style="flex:1 1 280px"><h2 style="font-size:28px">Which category next?</h2><p style="color:var(--body);margin:0">Stabilisers is the first league. Tell us which part of the supply chain you want ranked next and we will email you when it goes live.</p></div>' +
-    '<form method="post" action="/vote" style="flex:2 1 420px;position:relative">' + (v === 'ok' ? '<p class="ok">Thanks, your vote is in. We will email you when that league goes live.</p>' : v === 'bad' ? '<p class="err">Please pick a category and enter a valid email.</p>' : '') + HP +
-    '<fieldset class="pills"><legend>Pick one</legend>' + Object.keys(CAT_OPTS).map(function (k, i) { return '<label><input type="radio" name="cat" value="' + k + '"' + (i === 0 ? ' required' : '') + '> ' + CAT_OPTS[k] + '</label>'; }).join('') + '</fieldset>' +
-    '<div class="row" style="margin-top:6px"><div><label for="hv-email">Work email</label><input id="hv-email" name="email" type="email" required placeholder="you@company.com" autocomplete="email"></div><div style="flex:0 0 auto"><button type="submit">Vote</button></div></div></form></section>';
   h += '<section class="s"><h2>Questions</h2><div class="grid" style="gap:0 40px">' +
     '<details><summary>Is this the same as SEO?</summary><p>Related, but not the same. Google ranks pages; an AI assistant reads a handful of pages and writes its own shortlist. You can rank well on Google and still be missing from ChatGPT&rsquo;s answer.</p></details>' +
     '<details><summary>Why these assistants?</summary><p>ChatGPT, Gemini, Claude and Perplexity together cover about 95% of AI assistant use. Microsoft Copilot has no public way to run these questions, so it is left out, and Gemini stands in for Google&rsquo;s AI Overviews.</p></details>' +
@@ -709,7 +700,6 @@ export default {
       if (path === '/robots.txt') return new Response('User-agent: *\nAllow: /\nDisallow: /admin\n\nSitemap: https://yachtingsignals.com/sitemap.xml\n', { headers: { 'content-type': 'text/plain; charset=utf-8' } });
       if (path === '/sitemap.xml') return await sitemapXml(env);
       if (path === '/') return await homePage(env, url);
-      if (path === '/vote' && req.method === 'POST') return await votePost(req, env);
       if (path === '/start') return req.method === 'POST' ? await planPost(req, env) : planPage(url.searchParams.get('plan'), '');
       if (path === '/privacy') return privacyPage();
       if (path === '/check' && req.method === 'POST') return await ckStart(req, env);
